@@ -17,20 +17,31 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Check Android SDK
+        run: |
+          echo "Android SDK: $ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms"
+          ls "$ANDROID_HOME/build-tools"
 
       - name: Extract source
-        run: unzip -o PadOS-Source.zip -d source
+        run: |
+          mkdir -p source
+          unzip -o PadOS-Source.zip -d source
+          find source -name settings.gradle
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Build APK
-        working-directory: source
-        run: gradle assembleDebug --no-daemon
+        run: |
+          PROJECT=$(find source -name settings.gradle -print -quit)
+          test -n "$PROJECT"
+          cd "$(dirname "$PROJECT")"
+          gradle assembleDebug --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: PadOS-APK
-          path: source/app/build/outputs/apk/debug/*.apk
+          path: source/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
